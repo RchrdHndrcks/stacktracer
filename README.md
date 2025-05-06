@@ -6,6 +6,7 @@ StackTracer is a lightweight Go library that enhances error handling by automati
 
 - **Automatic error location**: Adds the file name and line number where the error originated
 - **Simple API**: A single `Trace()` function to wrap your errors
+- **Error wrapping**: Preserves the original error identity and type for compatibility with `errors.Is` and `errors.As`
 - **No external dependencies**: Uses only the Go standard library
 - **Minimal overhead**: Negligible performance impact
 - **Standard error compatible**: Works with any error that implements the `error` interface
@@ -59,7 +60,11 @@ By quickly identifying the exact location of errors, code maintenance becomes mo
 
 Error logs with stack trace information are much more useful for diagnosing issues in production, without the need to implement complex monitoring tools.
 
-### 4. No Changes to Your Workflow
+### 4. Preserves Original Error Context
+
+Unlike some error wrapping solutions that lose the original error context, StackTracer preserves the original error's identity and type. This means you can still use `errors.Is` and `errors.As` to check for specific error types and access custom error fields.
+
+### 5. No Changes to Your Workflow
 
 Unlike other solutions that require significant changes to how you handle errors, StackTracer integrates seamlessly with Go's standard error handling.
 
@@ -85,6 +90,40 @@ func fetchData(id string) ([]byte, error) {
         return nil, stacktracer.Trace(err)
     }
     return result, nil
+}
+```
+
+### Working with Custom Error Types
+
+```go
+// Custom error type with additional context
+type NotFoundError struct {
+    ID string
+}
+
+func (e *NotFoundError) Error() string {
+    return fmt.Sprintf("resource with ID %s not found", e.ID)
+}
+
+func GetResource(id string) (Resource, error) {
+    // Resource not found
+    if resourceNotExists(id) {
+        return Resource{}, stacktracer.Trace(&NotFoundError{ID: id})
+    }
+    // ...
+}
+
+// Later in your code, you can still check for the specific error type
+resource, err := GetResource("123")
+if err != nil {
+    var notFoundErr *NotFoundError
+    if errors.As(err, &notFoundErr) {
+        // Handle not found case specifically
+        log.Printf("Resource not found: %s", notFoundErr.ID)
+    } else {
+        // Handle other errors
+        log.Printf("Error: %s", err)
+    }
 }
 ```
 
