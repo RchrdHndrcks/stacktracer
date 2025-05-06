@@ -1,7 +1,6 @@
 package stacktracer
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -21,15 +20,16 @@ import (
 //
 //	file.go:line - always fails
 func Trace(err error) error {
-	return errors.New(trace(err.Error()))
+	return trace(err)
 }
 
 // trace adds the file and line number to the passed message.
-func trace(msg string) string {
+func trace(err error) error {
 	_, file, line, ok := runtime.Caller(2)
 	if !ok {
-		return msg
+		return err
 	}
+
 	filename := filepath.Base(file)
-	return fmt.Sprintf("%s:%d - %s", filename, line, msg)
+	return fmt.Errorf("%s:%d - %w", filename, line, err)
 }
